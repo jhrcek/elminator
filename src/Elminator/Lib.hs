@@ -32,7 +32,7 @@ import Control.Monad.Writer as W
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Maybe
-import Data.Text as T hiding (foldr)
+import Data.Text (Text)
 import Elminator.Generics.Simple
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -40,6 +40,7 @@ import Language.Haskell.TH.Syntax
 import qualified Data.List as List
 import qualified Data.List.NonEmpty as NE
 import qualified Data.Map.Strict as Map
+import qualified Data.Text as Text
 
 data ContentDecoder
     = CDRecord [(FieldName, FieldTag, TypeDescriptor)]
@@ -74,9 +75,9 @@ data PolyConfig
     | Poly
     deriving (Show)
 
-{- | Decides which among type definiton, encoder and decoder
+{- | Decides which among type definition, encoder and decoder
 will be included for a type. The poly config value decides
-wether the included type definition will be polymorphic.
+whether the included type definition will be polymorphic.
 -}
 data GenOption
     = Definiton PolyConfig
@@ -103,7 +104,7 @@ data ReifyInfo
 
 {- | Except for the reified info from TH, this type
 holds more or less same info as HType
-but it is arranged in a bit more accessable way for the
+but it is arranged in a bit more accessible way for the
 code that uses this information.
 -}
 data TypeDescriptor
@@ -130,15 +131,15 @@ getInfo :: Text -> GenM ([Name], [Con])
 getInfo tnString =
     W.lift $
         R.lift $ do
-            mName <- lookupTypeName $ unpack tnString
+            mName <- lookupTypeName $ Text.unpack tnString
             case mName of
                 Just tName -> do
                     info <- reify tName
                     pure (getTypeArgs info, getConstructors info)
                 Nothing ->
                     error $
-                        unpack $
-                            T.concat ["Cannot find type with name ", tnString, " in scope"]
+                        Text.unpack $
+                            Text.concat ["Cannot find type with name ", tnString, " in scope"]
 
 toTypeDescriptor :: HType -> GenM TypeDescriptor
 toTypeDescriptor (HUDef udata) =
@@ -251,25 +252,25 @@ renderType td includePara showPhantom = do
                 <$> case td of
                     TEmpty md tvars targs -> do
                         ta <- zipWithM renderFn targs tvars
-                        pure $ T.concat [_mTypeName md, " ", T.intercalate " " ta]
+                        pure $ Text.concat [_mTypeName md, " ", Text.intercalate " " ta]
                     TOccupied md (ReifyInfo tvars _) targs _ -> do
                         ta <- zipWithM renderFn targs tvars
-                        pure $ T.concat [_mTypeName md, " ", T.intercalate " " ta]
+                        pure $ Text.concat [_mTypeName md, " ", Text.intercalate " " ta]
                     TList wtd -> do
                         a <- renderType wtd True showPhantom
-                        pure $ T.concat ["List ", a, ""]
+                        pure $ Text.concat ["List ", a, ""]
                     TMaybe wtd -> do
                         a <- renderType wtd True showPhantom
-                        pure $ T.concat ["Maybe ", a, ""]
+                        pure $ Text.concat ["Maybe ", a, ""]
                     TTuple tds -> do
                         ta <- mapM (\x -> renderType x False showPhantom) tds
-                        pure $ T.concat ["(", T.intercalate ", " ta, ")"]
+                        pure $ Text.concat ["(", Text.intercalate ", " ta, ")"]
                     TPrimitive md -> pure $ _mTypeName md
                     TRecusrive md -> pure $ _mTypeName md
                     TExternal ei -> do
                         ta <- mapM (\x -> renderType x True showPhantom) $ exTypeArgs ei
-                        pure $ T.concat [snd $ exType ei, " ", T.intercalate " " ta]
-                    TVar name -> pure $ pack $ nameToText name
+                        pure $ Text.concat [snd $ exType ei, " ", Text.intercalate " " ta]
+                    TVar name -> pure $ Text.pack $ nameToText name
         else pure $ renderTypeHead td
   where
     wrapInParaConditionally :: Text -> Text
@@ -295,12 +296,12 @@ renderType td includePara showPhantom = do
     renderFn :: TypeDescriptor -> TypeVar -> GenM Text
     renderFn tdr (Phantom n) =
         if showPhantom
-            then pure $ pack $ nameToText n
+            then pure $ Text.pack $ nameToText n
             else renderFn tdr (Used n)
     renderFn tdr (Used _) = renderType tdr True showPhantom
 
 wrapInPara :: Text -> Text
-wrapInPara i = T.concat ["(", i, ")"]
+wrapInPara i = Text.concat ["(", i, ")"]
 
 hasPoly :: MData -> GenM Bool
 hasPoly tn = do
@@ -318,8 +319,8 @@ hasPoly tn = do
         fn _ = False
 
 renderTypeVar :: TypeVar -> Text
-renderTypeVar (Used tv) = pack $ nameToText tv
-renderTypeVar (Phantom tv) = pack $ nameToText tv
+renderTypeVar (Used tv) = Text.pack $ nameToText tv
+renderTypeVar (Phantom tv) = Text.pack $ nameToText tv
 
 typeDescriptorToDecoder :: Options -> TypeDescriptor -> Decoder
 typeDescriptorToDecoder opts td =
@@ -338,7 +339,7 @@ gdConstructor cds opts = gdTaggedWithConstructor (NE.toList cds) opts
 gdTaggedWithConstructor :: [ConstructorDescriptor] -> Options -> Decoder
 gdTaggedWithConstructor cds opts =
     case sumEncoding opts of
-        TaggedObject tfn cfn -> DTagged (pack tfn) (pack cfn) cdPair
+        TaggedObject tfn cfn -> DTagged (Text.pack tfn) (Text.pack cfn) cdPair
         ObjectWithSingleField -> DUnderConKey cdPair
         TwoElemArray -> DTwoElement cdPair
         UntaggedValue ->
@@ -348,7 +349,7 @@ gdTaggedWithConstructor cds opts =
     cdPair =
         ( \cd ->
             ( getCName cd
-            , pack $ constructorTagModifier opts $ unpack $ getCName cd
+            , Text.pack $ constructorTagModifier opts $ Text.unpack $ getCName cd
             , mkContentDecoder False cd opts
             )
         )
@@ -370,9 +371,9 @@ mkContentDecoder overrideTaggConf cd opts =
         SimpleConstructor _cname f -> CDList $ NE.toList f
         NullaryConstructor _ -> CDEmpty
   where
-    modifyFieldLabel ::
-        (Text, TypeDescriptor) -> (FieldName, FieldTag, TypeDescriptor)
-    modifyFieldLabel (a, b) = (a, pack $ fieldLabelModifier opts $ unpack a, b)
+    modifyFieldLabel :: (Text, TypeDescriptor) -> (FieldName, FieldTag, TypeDescriptor)
+    modifyFieldLabel (a, b) =
+        (a, Text.pack $ fieldLabelModifier opts $ Text.unpack a, b)
 
 getCName :: ConstructorDescriptor -> Text
 getCName (RecordConstructor x _) = x
@@ -383,8 +384,7 @@ collectExtRefs :: TypeDescriptor -> GenM ()
 collectExtRefs (TExternal (ExInfo ei (Just en) (Just de) _)) = tell [ei, en, de]
 collectExtRefs (TExternal (ExInfo ei _ _ _)) = tell [ei]
 collectExtRefs (TEmpty _ _ targs) = mapM_ collectExtRefs targs
-collectExtRefs (TOccupied _ _ _ cons_) =
-    mapM_ collectExtRefs $ getConstructorsFields cons_
+collectExtRefs (TOccupied _ _ _ cons_) = mapM_ collectExtRefs $ getConstructorsFields cons_
 collectExtRefs (TList td) = collectExtRefs td
 collectExtRefs (TMaybe td) = collectExtRefs td
 collectExtRefs (TPrimitive _) = pure ()

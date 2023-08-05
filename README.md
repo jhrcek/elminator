@@ -26,10 +26,9 @@ import Elminator
 import GHC.Generics (Generic)
 
 data SingleCon = SingleCon Int String deriving (Generic, ToHType)
-
 ```
 
-Since this library uses template Haskell to look up type information (in addition to Generics), we need to run the code generation code in a template Haskell splice. 
+Since this library uses template Haskell to look up type information (in addition to Generics), we need to run the code generation code in a template Haskell splice.
 A usage sample can be seen in the following code used in the round trip tests for this library.
 
 
@@ -95,7 +94,7 @@ data GenOption
   | Everything PolyConfig -- Generate both type definition, encoders and decoders. PolyConfig field decides if the type has to be polymorphic.
 
 data PolyConfig
-  = Mono | Poly 
+  = Mono | Poly
 ```
 
 A sample of generated Elm code can be seen [here](https://bitbucket.org/sras/elminator-test/src/master/elm-app/src/Autogen.elm)
@@ -104,32 +103,32 @@ A sample of generated Elm code can be seen [here](https://bitbucket.org/sras/elm
 
 Say you have this type defined in Haskell
 
-```
+```haskell
   data Product = Product { pName :: String, pWeight :: Decimal }
 ```
 
 We can derive `ToHType` for the above type just fine. This is because we have this general ToHType instance that use the `Typeable` instances to create primitive type representation.
 
-```
+```haskell
 instance {-# OVERLAPPABLE #-} (Typeable a) => ToHType a where
   toHType p = pure $ mkHType p
 ```
 
 Even though we are able to derive HType instance, the generated code end up looking something like the following
 
-```
-type Product = Product { pName : String, pWeight : DecimalRaw } 
+```haskell
+type Product = Product { pName : String, pWeight : DecimalRaw }
 
 encodeProduct : Product  -> E.Value
-encodeProduct a = 
+encodeProduct a =
  case a of
   Product x -> E.object ([ ("pName", E.string (x.pName))
                          , ("pWeight", encodeDecimalRaw (x.pWeight))])
 
-decodeProduct : D.Decoder Product 
-decodeProduct  = 
+decodeProduct : D.Decoder Product
+decodeProduct  =
  D.oneOf ([ let
-             mkProduct a1 a2 = 
+             mkProduct a1 a2 =
               Product ({pName = a1, pWeight = a2})
             in D.map2 (mkProduct) (D.field ("pName") (D.string)) (D.field ("pWeight") (encodeDecimalRaw))])
 ```
@@ -138,26 +137,26 @@ But there is no `DecimalRaw` type on the Elm side. So in this case, we might wan
 
 This can be done as follows
 
-```
+```haskell
   instance ToHType Decimal where
     toHType _ = toHType (Proxy :: Proxy Float)
 ```
 
 This gives us usable Elm code.
 
-```
-type Product = Product { pName : String, pWeight : Float } 
+```haskell
+type Product = Product { pName : String, pWeight : Float }
 
 encodeProduct : Product  -> E.Value
-encodeProduct a = 
+encodeProduct a =
  case a of
   Product x -> E.object ([ ("pName", E.string (x.pName))
                          , ("pWeight", E.float (x.pWeight))])
 
-decodeProduct : D.Decoder Product 
-decodeProduct  = 
+decodeProduct : D.Decoder Product
+decodeProduct  =
  D.oneOf ([ let
-             mkProduct a1 a2 = 
+             mkProduct a1 a2 =
               Product ({pName = a1, pWeight = a2})
             in D.map2 (mkProduct) (D.field ("pName") (D.string)) (D.field ("pWeight") (D.float))])
 ```

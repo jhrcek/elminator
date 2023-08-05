@@ -30,7 +30,9 @@ newtype CName
     deriving (Show)
 
 data HField
-    = HField (Maybe Text) HType
+    = HField
+        (Maybe Text) -- Is this selector name?
+        HType
     deriving (Show)
 
 type HState = State (Map.Map MData ())
@@ -151,15 +153,15 @@ class ToHType f where
                 a -> a
 
 instance
-    (ToHConstructor_ b, KnownSymbol a1, KnownSymbol a2, KnownSymbol a3) =>
-    ToHType_ (D1 ('MetaData a1 a2 a3 a4) b)
+    (ToHConstructor_ b, KnownSymbol typ, KnownSymbol modul, KnownSymbol pkg) =>
+    ToHType_ (D1 ('MetaData typ modul pkg a4) b)
     where
     toHType_ _ =
         let mdata =
                 MData
-                    (pack $ symbolVal (Proxy :: Proxy a1))
-                    (pack $ symbolVal (Proxy :: Proxy a2))
-                    (pack $ symbolVal (Proxy :: Proxy a3))
+                    (pack $ symbolVal (Proxy :: Proxy typ))
+                    (pack $ symbolVal (Proxy :: Proxy modul))
+                    (pack $ symbolVal (Proxy :: Proxy pkg))
          in do
                 seen <- get
                 case Map.lookup mdata seen of
@@ -237,42 +239,16 @@ instance ToHType a => ToHType (Maybe a) where
         pure $ HMaybe htype
 
 -- We need these tuple instances despite of the general ToHType instance
--- because we need to special case tupless to exclude them from recursion
--- tracking, which is included in the default implementation if ToHType class
+-- because we need to special case tuples to exclude them from recursion
+-- tracking, which is included in the default implementation of ToHType class
 instance ToHType ()
 
 instance (ToHType a1, ToHType a2) => ToHType (a1, a2)
-
 instance (ToHType a1, ToHType a2, ToHType a3) => ToHType (a1, a2, a3)
-
-instance
-    (ToHType a1, ToHType a2, ToHType a3, ToHType a4) =>
-    ToHType (a1, a2, a3, a4)
-
-instance
-    (ToHType a1, ToHType a2, ToHType a3, ToHType a4, ToHType a5) =>
-    ToHType (a1, a2, a3, a4, a5)
-
-instance
-    ( ToHType a1
-    , ToHType a2
-    , ToHType a3
-    , ToHType a4
-    , ToHType a5
-    , ToHType a6
-    ) =>
-    ToHType (a1, a2, a3, a4, a5, a6)
-
-instance
-    ( ToHType a1
-    , ToHType a2
-    , ToHType a3
-    , ToHType a4
-    , ToHType a5
-    , ToHType a6
-    , ToHType a7
-    ) =>
-    ToHType (a1, a2, a3, a4, a5, a6, a7)
+instance (ToHType a1, ToHType a2, ToHType a3, ToHType a4) => ToHType (a1, a2, a3, a4)
+instance (ToHType a1, ToHType a2, ToHType a3, ToHType a4, ToHType a5) => ToHType (a1, a2, a3, a4, a5)
+instance (ToHType a1, ToHType a2, ToHType a3, ToHType a4, ToHType a5, ToHType a6) => ToHType (a1, a2, a3, a4, a5, a6)
+instance (ToHType a1, ToHType a2, ToHType a3, ToHType a4, ToHType a5, ToHType a6, ToHType a7) => ToHType (a1, a2, a3, a4, a5, a6, a7)
 
 instance ToHType a => ToHType [a] where
     toHType _ = do
@@ -288,10 +264,9 @@ instance ToHType Text where
 
 mkHType :: Typeable a => Proxy a -> HType
 mkHType p =
-    let tname = typeRepTyCon $ typeRep p
-     in HPrimitive
-            ( MData
-                (pack $ tyConName tname)
-                (pack $ tyConModule tname)
-                (pack $ tyConPackage tname)
-            )
+    let tyCon = typeRepTyCon $ typeRep p
+     in HPrimitive $
+            MData
+                (pack $ tyConName tyCon)
+                (pack $ tyConModule tyCon)
+                (pack $ tyConPackage tyCon)

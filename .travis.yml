@@ -2,7 +2,7 @@ language: minimal
 dist: xenial
 cache:
   directories:
-  - $HOME/.stack
+    - $HOME/.stack
 before_script:
   - sudo apt-get install chromium-browser
   - sudo apt-get install wget
