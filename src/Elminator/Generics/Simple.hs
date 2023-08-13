@@ -22,26 +22,23 @@ import GHC.TypeLits
 import Language.Haskell.TH hiding (Type)
 
 import qualified Data.List as List
-import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 import qualified Data.Text as T
 
+-- | Constructor name
 newtype CName
     = CName Text
     deriving (Show)
 
+-- | Info about constructor field
 data HField
     = HField
-        (Maybe Text) -- Is this selector name?
+        -- | selector name
+        (Maybe Text)
         HType
     deriving (Show)
 
-type HState = State (Map.Map MData ())
-
-type ExTypeName = Text
-
-type ExEncoderName = Text
-
-type ExDecoderName = Text
+type HState = State (Set.Set MData)
 
 type ModuleName = Text
 
@@ -49,6 +46,8 @@ type SymbolName = Text
 
 type ExItem = (ModuleName, SymbolName)
 
+-- TODO document
+-- ? Info about external type defined in elm
 data ExInfo a = ExInfo
     { exType :: ExItem
     , exEncoder :: Maybe ExItem
@@ -79,7 +78,7 @@ data TypeVar
 data UDefData = UDefData
     { udefdMdata :: MData
     , udefdTypeArgs :: [HType]
-    , udefDConstructors :: [HConstructor]
+    , udefdConstructors :: [HConstructor]
     }
     deriving (Show)
 
@@ -130,13 +129,13 @@ type family ExtractTArgs (f :: k) :: [Type] where
     ExtractTArgs f = '[]
 
 class ToHTArgs f where
-    toHTArgs :: Proxy f -> [HState HType]
+    toHTArgs :: Proxy f -> HState [HType]
 
 instance ToHTArgs '[] where
-    toHTArgs _ = []
+    toHTArgs _ = pure []
 
-instance (ToHType a, ToHTArgs x) => ToHTArgs (a : x) where
-    toHTArgs _ = toHType (Proxy :: Proxy a) : toHTArgs (Proxy :: Proxy x)
+instance (ToHType a, ToHTArgs as) => ToHTArgs (a : as) where
+    toHTArgs _ = (:) <$> toHType (Proxy :: Proxy a) <*> toHTArgs (Proxy :: Proxy as)
 
 class ToHType f where
     toHType :: Proxy f -> HState HType
@@ -145,7 +144,7 @@ class ToHType f where
         Proxy f ->
         HState HType
     toHType _ = do
-        targs <- sequence (toHTArgs (Proxy :: Proxy (ExtractTArgs f)))
+        targs <- toHTArgs (Proxy :: Proxy (ExtractTArgs f))
         htype <- toHType_ (Proxy :: (Proxy (Rep f)))
         pure $
             case htype of
@@ -164,12 +163,12 @@ instance
                     (pack $ symbolVal (Proxy :: Proxy pkg))
          in do
                 seen <- get
-                case Map.lookup mdata seen of
-                    Just _ -> pure $ HRecursive mdata
-                    Nothing -> do
+                if Set.member mdata seen
+                    then pure $ HRecursive mdata
+                    else do
                         case isTuple $ _mTypeName mdata of
                             Just _ -> pure ()
-                            Nothing -> put $ Map.insert mdata () seen
+                            Nothing -> put $ Set.insert mdata seen
                         cons_ <- toHConstructor_ (Proxy :: Proxy b)
                         pure $ HUDef $ UDefData mdata [] cons_
 

@@ -261,6 +261,7 @@ type FSig = Maybe Text
 newtype ElmSrc
     = ElmSrc [EDec]
 
+-- | Elm Declaration
 data EDec
     = EFunc Text FSig [FArg] EExpr
     | EType Text [TArg] ECons

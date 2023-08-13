@@ -31,7 +31,6 @@ import Control.Monad.State.Lazy
 import Control.Monad.Writer as W
 import Data.Aeson
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Data.Maybe
 import Data.Text (Text)
 import Elminator.Generics.Simple
 import Language.Haskell.TH
@@ -96,7 +95,7 @@ data ElmVersion
 
 {- | Contains the type arguments of a type
 | with info regarding if they are Phantom
-| and the list of constructors from TH reifiy
+| and the list of constructors from TH reify
 -}
 data ReifyInfo
     = ReifyInfo [TypeVar] [Con]
@@ -192,12 +191,12 @@ mkTdConstructor hc =
 
 mkTypeArg :: [Con] -> Name -> TypeVar
 mkTypeArg constrs name =
-    if or $ searchCon name <$> constrs
+    if List.any (searchCon name) constrs
         then Used name
         else Phantom name
 
 searchCon :: Name -> Con -> Bool
-searchCon name con = List.or $ searchType name <$> getConstructorFields con
+searchCon name con = List.any (searchType name) $ getConstructorFields con
   where
     searchType :: Name -> Type -> Bool
     searchType name_ (VarT n) = name_ == n
@@ -305,13 +304,11 @@ wrapInPara i = Text.concat ["(", i, ")"]
 
 hasPoly :: MData -> GenM Bool
 hasPoly tn = do
-    (_, x) <- ask
-    case Map.lookup tn x of
-        Just b -> pure $ hasPoly' b
-        Nothing -> pure True
+    m <- asks snd
+    pure . maybe True hasPoly' $ Map.lookup tn m
   where
     hasPoly' :: ([GenOption], HType) -> Bool
-    hasPoly' (cl, _) = isJust $ List.find fn cl
+    hasPoly' (gos, _) = List.any fn gos
       where
         fn :: GenOption -> Bool
         fn (Definiton Poly) = True

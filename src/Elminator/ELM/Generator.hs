@@ -26,16 +26,16 @@ import qualified Prelude as P
 elmFront :: Text -> GenM (Text -> Text)
 elmFront moduleName = do
     (ev, _) <- ask
-    case ev of
-        Elm0p19 -> pure $ Elm19.elmFront moduleName
-        Elm0p18 -> pure $ Elm18.elmFront moduleName
+    pure $ case ev of
+        Elm0p19 -> Elm19.elmFront moduleName
+        Elm0p18 -> Elm18.elmFront moduleName
 
 listEncoder :: GenM EExpr
 listEncoder = do
     (ev, _) <- ask
-    case ev of
-        Elm0p19 -> pure Elm19.listEncoder
-        Elm0p18 -> pure Elm18.listEncoder
+    pure $ case ev of
+        Elm0p19 -> Elm19.listEncoder
+        Elm0p18 -> Elm18.listEncoder
 
 generateTupleEncoder :: Int -> [TypeDescriptor] -> GenM EDec
 generateTupleEncoder idx types = do
@@ -466,7 +466,7 @@ getDecoderExpr idx td =
                         ELambda $
                             EName $
                                 T.concat ["decode", _mTypeName md]
-                TMaybe x -> (EFuncApp "D.nullable" (getDecoderExpr idx x))
+                TMaybe x -> EFuncApp "D.nullable" (getDecoderExpr idx x)
                 TExternal (ExInfo _ _ (Just ei) _) -> EName $ T.concat [snd ei]
                 TExternal ExInfo{} -> error "Decoder not found"
                 TVar _ -> error "Decoder not found"
@@ -477,13 +477,13 @@ getDecoderExpr idx td =
 checkRecursion :: TypeDescriptor -> Bool
 checkRecursion td_ =
     case td_ of
-        TOccupied _ _ _ cnstrs -> or $ checkRecursion <$> getTypeDescriptors cnstrs
+        TOccupied _ _ _ cnstrs -> List.any checkRecursion $ getTypeDescriptors cnstrs
         TList td -> checkRecursion td
         TMaybe td -> checkRecursion td
         TPrimitive _ -> False
         TRecusrive _ -> True
         TExternal _ -> False
-        TTuple tds -> or $ checkRecursion <$> tds
+        TTuple tds -> List.any checkRecursion tds
         TEmpty{} -> False
         TVar _ -> False
   where
@@ -522,7 +522,7 @@ generateElmDef td needPoly =
                         Nothing -> error "No constructors obtained from reify"
                     else generateElmDefC c
             pure $ EType a (getTypeVars tvars needPoly) defC
-        _ -> error "Can only create definitions for use defined types"
+        _ -> error "Can only create definitions for user defined types"
 
 getTypeVars :: [TypeVar] -> Bool -> [Text]
 getTypeVars tds needPoly =
