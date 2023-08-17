@@ -41,10 +41,11 @@ import qualified Data.Set as Set
 import Data.Proxy
 import GHC.Generics
 :set -XDeriveAnyClass -XDeriveGeneric -XTemplateHaskell
-data Person phanton a = Person {age :: Int, val :: a} deriving (Show, Generic, ToHType)
 
-ht = SS.evalState (toHType (Proxy :: Proxy (Person Bool))) Set.empty
-builder = include (Proxy :: Proxy (Person Bool)) (Everything Poly)
+data Person phanton a = Person {age :: Int, val :: a} deriving (Show, Generic, ToHType)
+personProxy = Proxy :: Proxy (Person Float Bool)
+ht = SS.evalState (toHType personProxy) Set.empty
+builder = include personProxy (Everything Poly)
 genConfig = SL.execState builder Map.empty
 putStrLn $(stringE . ppShow =<< runReaderT (runWriterT $ toTypeDescriptor ht) (Elm0p19 , genConfig))
 -}

@@ -107,8 +107,10 @@ but it is arranged in a bit more accessible way for the
 code that uses this information.
 -}
 data TypeDescriptor
-    = TEmpty MData [TypeVar] [TypeDescriptor]
-    | TOccupied MData ReifyInfo [TypeDescriptor] Constructors
+    = -- | User Defined type without constructors
+      TEmpty MData [TypeVar] [TypeDescriptor]
+    | -- | User Defined type with constructors
+      TOccupied MData ReifyInfo [TypeDescriptor] Constructors
     | TList TypeDescriptor
     | TMaybe TypeDescriptor
     | TTuple [TypeDescriptor]
@@ -127,18 +129,17 @@ data ConstructorDescriptor
     deriving (Show)
 
 getInfo :: Text -> GenM ([Name], [Con])
-getInfo tnString =
-    W.lift $
-        R.lift $ do
-            mName <- lookupTypeName $ Text.unpack tnString
-            case mName of
-                Just tName -> do
-                    info <- reify tName
-                    pure (getTypeArgs info, getConstructors info)
-                Nothing ->
-                    error $
-                        Text.unpack $
-                            Text.concat ["Cannot find type with name ", tnString, " in scope"]
+getInfo typName =
+    W.lift . R.lift $ do
+        mName <- lookupTypeName $ Text.unpack typName
+        case mName of
+            Just tName -> do
+                info <- reify tName
+                pure (getTypeArgs info, getConstructors info)
+            Nothing ->
+                fail $
+                    Text.unpack $
+                        Text.concat ["Cannot find type with name ", typName, " in scope"]
 
 toTypeDescriptor :: HType -> GenM TypeDescriptor
 toTypeDescriptor (HUDef udata) =
@@ -149,16 +150,12 @@ toTypeDescriptor (HUDef udata) =
                 Just _ -> pure $ TTuple tdArgs
                 Nothing -> do
                     (tVars, cnstrs) <- getInfo tnString
-                    case hcons of
-                        [] -> pure $ TEmpty mdata (Phantom <$> tVars) tdArgs
-                        (c : cs) -> do
-                            rawCons <-
-                                do
-                                    h <- mkTdConstructor c
-                                    t <- mapM mkTdConstructor cs
-                                    pure $ h :| t
+                    case NE.nonEmpty hcons of
+                        Nothing -> pure $ TEmpty mdata (Phantom <$> tVars) tdArgs
+                        Just nec -> do
+                            cds <- mapM mkTdConstructor nec
                             let reifyInfo = ReifyInfo (mkTypeArg cnstrs <$> tVars) cnstrs
-                            pure $ TOccupied mdata reifyInfo tdArgs rawCons
+                            pure $ TOccupied mdata reifyInfo tdArgs cds
 toTypeDescriptor (HPrimitive md) = pure $ TPrimitive md
 toTypeDescriptor (HList ht) = TList <$> toTypeDescriptor ht
 toTypeDescriptor (HMaybe ht) = TMaybe <$> toTypeDescriptor ht
@@ -190,18 +187,17 @@ mkTdConstructor hc =
                             pure $ SimpleConstructor cname $ NE.fromList a
 
 mkTypeArg :: [Con] -> Name -> TypeVar
-mkTypeArg constrs name =
-    if List.any (searchCon name) constrs
-        then Used name
-        else Phantom name
-
-searchCon :: Name -> Con -> Bool
-searchCon name con = List.any (searchType name) $ getConstructorFields con
+mkTypeArg constrs tyVarName
+    | List.any varUsedInCon constrs = Used tyVarName
+    | otherwise = Phantom tyVarName
   where
-    searchType :: Name -> Type -> Bool
-    searchType name_ (VarT n) = name_ == n
-    searchType name_ (AppT t1 t2) = searchType name_ t1 || searchType name_ t2
-    searchType _ _ = False
+    varUsedInCon :: Con -> Bool
+    varUsedInCon = List.any varUsedInType . getConstructorFields
+
+    varUsedInType :: Type -> Bool
+    varUsedInType (VarT n) = tyVarName == n
+    varUsedInType (AppT t1 t2) = varUsedInType t1 || varUsedInType t2
+    varUsedInType _ = False
 
 getConstructorFields :: Con -> [Type]
 getConstructorFields c =
@@ -220,13 +216,13 @@ getConstructors info =
 getTypeArgs :: Info -> [Name]
 getTypeArgs i =
     case i of
-        TyConI (DataD _ _ args _ _ _) -> mapFn <$> args
-        TyConI (NewtypeD _ _ args _ _ _) -> mapFn <$> args
+        TyConI (DataD _ _ args _ _ _) -> tyVarName <$> args
+        TyConI (NewtypeD _ _ args _ _ _) -> tyVarName <$> args
         _ -> error "Unimplemented"
   where
-    mapFn :: TyVarBndr f -> Name
-    mapFn (PlainTV n _) = n
-    mapFn (KindedTV n _ _) = n
+    tyVarName :: TyVarBndr f -> Name
+    tyVarName (PlainTV n _) = n
+    tyVarName (KindedTV n _ _) = n
 
 nameToText :: Name -> String
 nameToText (Name (OccName a) _) = a

@@ -530,6 +530,7 @@ getTypeVars tds needPoly =
         then renderTypeVar <$> tds
         else []
 
+-- TODO what is this doing?
 injectTypeVars :: Con -> ConstructorDescriptor -> ConstructorDescriptor
 injectTypeVars (RecC _ vbt) (RecordConstructor name flds) =
     case NE.nonEmpty $ (\(_, _, t) -> t) <$> vbt of
