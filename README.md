@@ -104,20 +104,20 @@ A sample of generated Elm code can be seen [here](https://bitbucket.org/sras/elm
 
 Say you have this type defined in Haskell
 
-```
+```haskell
   data Product = Product { pName :: String, pWeight :: Decimal }
 ```
 
 We can derive `ToHType` for the above type just fine. This is because we have this general ToHType instance that use the `Typeable` instances to create primitive type representation.
 
-```
+```haskell
 instance {-# OVERLAPPABLE #-} (Typeable a) => ToHType a where
   toHType p = pure $ mkHType p
 ```
 
 Even though we are able to derive HType instance, the generated code end up looking something like the following
 
-```
+```elm
 type Product = Product { pName : String, pWeight : DecimalRaw }
 
 encodeProduct : Product  -> E.Value
@@ -138,14 +138,14 @@ But there is no `DecimalRaw` type on the Elm side. So in this case, we might wan
 
 This can be done as follows
 
-```
+```haskell
   instance ToHType Decimal where
     toHType _ = toHType (Proxy :: Proxy Float)
 ```
 
 This gives us usable Elm code.
 
-```
+```elm
 type Product = Product { pName : String, pWeight : DecimalRaw }
 
 encodeProduct : Product -> E.Value

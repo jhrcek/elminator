@@ -104,7 +104,6 @@ data UDefData =
 --            (Just ("External", "encodeMyExtType"))
 --            (Just ("External", "decodeMyExtType"))
 --            [ha, hb])
---
 -- @
 --
 data HType
