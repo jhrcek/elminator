@@ -69,17 +69,17 @@ data Decoder
 
 type GenM = WriterT [ExItem] (ReaderT (ElmVersion, GenConfig) Q)
 
--- | Decides wether the type definition will be polymorphic.
+-- | Decides whether the type definition will be polymorphic.
 data PolyConfig
   = Mono
   | Poly
   deriving (Show)
 
--- | Decides which among type definiton, encoder and decoder
+-- | Decides which among type definition, encoder and decoder
 -- will be included for a type. The poly config value decides
--- wether the included type definition will be polymorphic.
+-- whether the included type definition will be polymorphic.
 data GenOption
-  = Definiton PolyConfig
+  = Definition PolyConfig
   | EncoderDecoder
   | Everything PolyConfig
   deriving (Show)
@@ -102,7 +102,7 @@ data ReifyInfo =
 
 -- | Except for the reified info from TH, this type
 -- holds more or less same info as HType
--- but it is arranged in a bit more accessable way for the
+-- but it is arranged in a bit more accessible way for the
 -- code that uses this information.
 data TypeDescriptor
   = TEmpty MData [TypeVar] [TypeDescriptor]
@@ -306,7 +306,7 @@ hasPoly tn = do
     hasPoly' (cl, _) = isJust $ DL.find fn cl
       where
         fn :: GenOption -> Bool
-        fn (Definiton Poly) = True
+        fn (Definition Poly) = True
         fn (Everything Poly) = True
         fn _ = False
 

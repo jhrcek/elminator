@@ -83,10 +83,10 @@ generateElm d h opts = do
   collectExtRefs td
   src <-
     case d of
-      Definiton Mono -> do
+      Definition Mono -> do
         def <- generateElmDef td False
         pure $ ElmSrc [def]
-      Definiton Poly -> do
+      Definition Poly -> do
         def <- generateElmDef td True
         pure $ ElmSrc [def]
       Everything Mono -> do

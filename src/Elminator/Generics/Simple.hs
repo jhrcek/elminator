@@ -85,7 +85,7 @@ data UDefData =
 
 -- | This type holds the type information we get from generics.
 -- Only the `HExternal` constructor is supposed to be used by the programmer
--- to implement `ToHType` instances for entites that are predefined in Elm. A sample can be seen below.
+-- to implement `ToHType` instances for entities that are predefined in Elm. A sample can be seen below.
 --
 -- Here, let `MyExtType a b` be a type which has the corresponding type, encoders and decoders predefined in Elm
 -- in a module named "Lib". Here is how you can implement a ToHType instance for this type so that your other

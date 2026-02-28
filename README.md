@@ -62,7 +62,7 @@ elmSource =
       include (Proxy :: Proxy WithMaybes) $ Everything Mono
       include (Proxy :: Proxy WithSimpleMaybes) $ Everything Mono
       include (Proxy :: Proxy (WithMaybesPoly (Maybe String) Float)) $
-        Definiton Poly
+        Definition Poly
       include
         (Proxy :: Proxy (WithMaybesPoly (Maybe String) Float))
         EncoderDecoder
@@ -76,7 +76,7 @@ elmSource =
       include (Proxy :: Proxy NTSingleCon2) $ Everything Poly
       include (Proxy :: Proxy Tuples) $ Everything Mono
       include (Proxy :: Proxy NestedTuples) $ Everything Mono
-      include (Proxy :: Proxy (NestedTuplesPoly ())) $ Definiton Poly
+      include (Proxy :: Proxy (NestedTuplesPoly ())) $ Definition Poly
       include (Proxy :: Proxy (TypeWithExt ())) $ Everything Poly
       include (Proxy :: Proxy (WithEmptyTuple ())) $ Everything Poly
       include (Proxy :: Proxy (Phantom2 ())) $ Everything Poly
@@ -90,7 +90,7 @@ elmSource =
 -- type generated at Elm should be polymorphic. It is defined as follows.
 
 data GenOption
-  = Definiton PolyConfig  -- Generate Type definition in Elm. PolyConfig field decides if the type has to be polymorphic
+  = Definition PolyConfig  -- Generate Type definition in Elm. PolyConfig field decides if the type has to be polymorphic
   | EncoderDecoder -- Generate Encoder and Decoder in Elm
   | Everything PolyConfig -- Generate both type definition, encoders and decoders. PolyConfig field decides if the type has to be polymorphic.
 
