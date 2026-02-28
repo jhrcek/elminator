@@ -35,7 +35,8 @@ import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty((:|)))
 import qualified Data.Map.Strict as DMS
 import Data.Maybe
-import Data.Text as T hiding (foldr)
+import Data.Text (Text, pack, unpack)
+import qualified Data.Text as T
 import Elminator.Generics.Simple
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
@@ -184,12 +185,12 @@ mkTdConstructor hc =
 
 mkTypeArg :: [Con] -> Name -> TypeVar
 mkTypeArg constrs name =
-  if or $ searchCon name <$> constrs
+  if any (searchCon name) constrs
     then Used name
     else Phantom name
 
 searchCon :: Name -> Con -> Bool
-searchCon name con = DL.or $ searchType name <$> getConstructorFields con
+searchCon name con = DL.any (searchType name) $ getConstructorFields con
   where
     searchType :: Name -> Type -> Bool
     searchType name_ (VarT n) = name_ == n
