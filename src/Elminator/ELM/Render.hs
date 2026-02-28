@@ -2,10 +2,13 @@
 
 module Elminator.ELM.Render where
 
+import Control.Monad (unless)
 import Control.Monad.State.Lazy
+import Data.Foldable (traverse_)
 import qualified Data.List as DL
 import Data.String
-import Data.Text as T hiding (foldr)
+import Data.Text (Text, pack)
+import qualified Data.Text as T
 
 type CurrentPos = Int
 
@@ -37,10 +40,10 @@ renderIC _ [] _ = pure ()
 renderIC _ [t] fn = fn t
 renderIC s (t:tx) fn = do
   fn t
-  sequence_ $
+  traverse_
     (\x -> do
        s
-       fn x) <$>
+       fn x)
     tx
 
 renderNL :: RenderM ()
@@ -81,9 +84,8 @@ renderElmDec (EType name targs cons_) = do
   renderText "type"
   renderSpace
   renderText name
-  if not (DL.null targs)
-    then renderSpace
-    else pure ()
+  unless (DL.null targs)
+    renderSpace
   renderIC renderSpace targs renderText
   case cons_ of
     EEmpty -> pure ()

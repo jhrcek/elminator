@@ -13,7 +13,8 @@ import qualified Data.List as DL
 import qualified Data.List.NonEmpty as NE
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Maybe
-import Data.Text as T hiding (any, zipWith)
+import Data.Text (Text, pack, unpack)
+import qualified Data.Text as T
 import qualified Elminator.ELM.Elm18 as Elm18
 import qualified Elminator.ELM.Elm19 as Elm19
 import Elminator.ELM.Render
@@ -82,10 +83,10 @@ generateElm d h opts = do
   collectExtRefs td
   src <-
     case d of
-      Definiton Mono -> do
+      Definition Mono -> do
         def <- generateElmDef td False
         pure $ ElmSrc [def]
-      Definiton Poly -> do
+      Definition Poly -> do
         def <- generateElmDef td True
         pure $ ElmSrc [def]
       Everything Mono -> do
@@ -453,7 +454,7 @@ getDecoderExpr idx td =
           TRecusrive md ->
             EFuncApp "D.lazy" $
             ELambda $ EName $ T.concat ["decode", _mTypeName md]
-          TMaybe x -> (EFuncApp "D.nullable" (getDecoderExpr idx x))
+          TMaybe x -> EFuncApp "D.nullable" (getDecoderExpr idx x)
           TExternal (ExInfo _ _ (Just ei) _) -> EName $ T.concat [snd ei]
           TExternal ExInfo {} -> error "Decoder not found"
           TVar _ -> error "Decoder not found"
@@ -464,13 +465,13 @@ getDecoderExpr idx td =
 checkRecursion :: TypeDescriptor -> Bool
 checkRecursion td_ =
   case td_ of
-    TOccupied _ _ _ cnstrs -> or $ checkRecursion <$> getTypeDescriptors cnstrs
+    TOccupied _ _ _ cnstrs -> any checkRecursion $ getTypeDescriptors cnstrs
     TList td -> checkRecursion td
     TMaybe td -> checkRecursion td
     TPrimitive _ -> False
     TRecusrive _ -> True
     TExternal _ -> False
-    TTuple tds -> or $ checkRecursion <$> tds
+    TTuple tds -> any checkRecursion tds
     TEmpty {} -> False
     TVar _ -> False
   where
