@@ -75,7 +75,7 @@ test-suite elminator-e2e
   if !flag(e2e)
     buildable: False
   type: exitcode-stdio-1.0
-  main-is: TestMain.hs
+  main-is: Main.hs
   other-modules:
     AllElmSources
     TestInstances

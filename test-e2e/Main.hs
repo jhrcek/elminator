@@ -17,7 +17,6 @@ import qualified Data.Map.Strict as Map
 import Data.Proxy
 import Data.String (fromString)
 import GHC.TypeLits (KnownNat, SomeNat (..), someNatVal)
-import System.Directory (createDirectoryIfMissing)
 import System.Exit (ExitCode (..))
 import System.Process (CreateProcess (..), proc, readCreateProcessWithExitCode, readProcessWithExitCode)
 import Test.Tasty
@@ -32,17 +31,18 @@ main =
         testGroup "E2E Round-trip" $
             zipWith
                 ( \i opts -> case someNatVal (fromIntegral i) of
-                    Just (SomeNat (p :: Proxy n)) ->
+                    Just (SomeNat (proxy :: Proxy n)) ->
                         testCase
-                            ("Options " ++ show i ++ "{" ++ showOpts opts ++ "}")
-                            (runTest i p)
-                    Nothing -> error $ "someNatVal failed for " ++ show i
+                            (showOpts i opts)
+                            (runTest i proxy)
+                    Nothing ->
+                        error $ "someNatVal failed for " ++ show i
                 )
                 [0 :: Int ..]
                 optionsList
 
-showOpts :: A.Options -> String
-showOpts o =
+showOpts :: Int -> A.Options -> String
+showOpts index o =
     let flm = "fieldLabelModifier: " ++ if A.fieldLabelModifier o "x" == "x" then "default" else "YES"
         ctm = "constructorTagModifier: " ++ if A.constructorTagModifier o "x" == "x" then "default" else "YES"
         nul = "allNullaryToStringTag: " ++ show (A.allNullaryToStringTag o)
@@ -55,7 +55,7 @@ showOpts o =
                 A.UntaggedValue -> "UntaggedValue"
                 A.ObjectWithSingleField -> "ObjectWithSingleField"
                 A.TwoElemArray -> "TwoElemArray"
-     in intercalate ", " [flm, ctm, nul, omit, se, uwr, tsc]
+     in "Options " ++ show index ++ "{" ++ intercalate ", " [flm, ctm, nul, omit, se, uwr, tsc] ++ "}"
 
 runTest :: forall n. KnownNat n => Int -> Proxy n -> IO ()
 runTest i _ = do
@@ -64,14 +64,13 @@ runTest i _ = do
         inputJson = object [fromString (ptcName c) .= ptcEncoded c | c <- cases]
 
     -- Write Autogen.elm
-    createDirectoryIfMissing True "test-e2e/elm-app/src"
     writeFile "test-e2e/elm-app/src/Autogen.elm" elmSrc
 
-    -- Compile Elm (must run from elm-app dir where elm.json lives)
+    -- Compile Elm code
     (ec, _, stderr_) <-
         readCreateProcessWithExitCode
-            (proc "elm" ["make", "--optimize", "--output=elm.js", "src/Main.elm"])
-                { cwd = Just "test-e2e/elm-app"
+            (proc "elm" ["make", "src/Main.elm", "--output=elm.js"])
+                { cwd = Just "test-e2e/elm-app" -- must run from elm-app dir where elm.json lives
                 }
             ""
     when (ec /= ExitSuccess) $ assertFailure $ "elm make failed: " ++ stderr_

@@ -266,8 +266,7 @@ builder = do
     include (Proxy :: Proxy Comment) $ Everything Mono
     include (Proxy :: Proxy WithMaybes) $ Everything Mono
     include (Proxy :: Proxy WithSimpleMaybes) $ Everything Mono
-    include (Proxy :: Proxy (WithMaybesPoly (Maybe String) Float)) $
-        Definition Poly
+    include (Proxy :: Proxy (WithMaybesPoly (Maybe String) Float)) $ Definition Poly
     include (Proxy :: Proxy (WithMaybesPoly (Maybe String) Float)) EncoderDecoder
     include (Proxy :: Proxy (Phantom ())) $ Everything Poly
     include (Proxy :: Proxy (TypeWithPhantom Float)) $ Everything Poly
