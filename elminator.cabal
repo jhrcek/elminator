@@ -69,3 +69,36 @@ test-suite elminator-test
     base >=4.7 && <5
 
   default-language: Haskell2010
+
+test-suite elminator-e2e
+  type: exitcode-stdio-1.0
+  main-is: TestMain.hs
+
+  other-modules:
+    TestTypes
+    TestWrapper
+    TestShadowTypes
+    TestInstances
+    TestValues
+    AllElmSources
+
+  hs-source-dirs:
+    test-e2e
+
+  ghc-options: -Wall
+
+  build-depends:
+    aeson >=2.2.3 && <2.3,
+    base >=4.7 && <5,
+    bytestring,
+    containers,
+    directory,
+    elminator,
+    ghc-prim,
+    process,
+    template-haskell,
+    text,
+    tasty,
+    tasty-hunit
+
+  default-language: Haskell2010

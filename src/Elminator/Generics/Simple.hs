@@ -111,7 +111,7 @@ data HType
   | HMaybe HType
   | HList HType
   | HPrimitive MData
-  | HRecursive MData
+  | HRecursive MData [HType]
   | HExternal (ExInfo HType)
   deriving (Show)
 
@@ -147,6 +147,7 @@ class ToHType f where
     pure $
       case htype of
         HUDef ud -> HUDef $ ud {udefdTypeArgs = DL.reverse targs}
+        HRecursive md _ -> HRecursive md (DL.reverse targs)
         a -> a
 
 instance (ToHConstructor_ b, KnownSymbol a1, KnownSymbol a2, KnownSymbol a3) =>
@@ -159,7 +160,7 @@ instance (ToHConstructor_ b, KnownSymbol a1, KnownSymbol a2, KnownSymbol a3) =>
             (pack $ symbolVal (Proxy :: Proxy a3))
      in do seen <- get
            case DMS.lookup mdata seen of
-             Just _ -> pure $ HRecursive mdata
+             Just _ -> pure $ HRecursive mdata []
              Nothing -> do
                case isTuple $ _mTypeName mdata of
                  Just _ -> pure ()

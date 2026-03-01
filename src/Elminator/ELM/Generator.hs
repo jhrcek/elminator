@@ -430,7 +430,7 @@ getEncoderExpr idx (TList x) = do
 getEncoderExpr idx (TMaybe x) = do
   expr <- getEncoderExpr idx x
   pure $ EFuncApp "encodeMaybe" expr
-getEncoderExpr _ (TRecusrive md) =
+getEncoderExpr _ (TRecusrive md _) =
   pure $ EName $ T.concat ["encode", _mTypeName md]
 getEncoderExpr _ (TExternal (ExInfo _ (Just ei) _ _)) =
   pure $ EName $ T.concat [snd ei]
@@ -451,7 +451,7 @@ getDecoderExpr idx td =
           TOccupied md _ _ _ -> EName $ T.concat ["decode", _mTypeName md]
           TPrimitive n -> EName $ getPrimitiveDecoder $ _mTypeName n
           TList x -> EFuncApp (EName "D.list") (getDecoderExpr idx x)
-          TRecusrive md ->
+          TRecusrive md _ ->
             EFuncApp "D.lazy" $
             ELambda $ EName $ T.concat ["decode", _mTypeName md]
           TMaybe x -> EFuncApp "D.nullable" (getDecoderExpr idx x)
@@ -469,7 +469,7 @@ checkRecursion td_ =
     TList td -> checkRecursion td
     TMaybe td -> checkRecursion td
     TPrimitive _ -> False
-    TRecusrive _ -> True
+    TRecusrive _ _ -> True
     TExternal _ -> False
     TTuple tds -> any checkRecursion tds
     TEmpty {} -> False
@@ -561,6 +561,11 @@ injectTypeVarIntoTD (AppT t1 t2) td =
        in TExternal $ ei {exTypeArgs = newTds ++ [tailTd]}
     TMaybe tdc -> TMaybe $ injectTypeVarIntoTD t2 tdc
     TList tdc -> TList $ injectTypeVarIntoTD t2 tdc
+    TRecusrive md tds ->
+      let tailTd = injectTypeVarIntoTD t2 (Prelude.last tds)
+          TRecusrive _ newtds =
+            injectTypeVarIntoTD t1 (TRecusrive md (Prelude.init tds))
+       in TRecusrive md (newtds ++ [tailTd])
     td_ -> td_
 injectTypeVarIntoTD _ td = td
 

@@ -39,7 +39,7 @@ include p dc = do
       HPrimitive _ -> error "Direct encoding of primitive type is not supported"
       HMaybe _ -> error "Direct encoding of maybe type is not supported"
       HList _ -> error "Direct encoding of list type is not supported"
-      HRecursive _ -> error "Unexpected meta data"
+      HRecursive _ _ -> error "Unexpected meta data"
       HExternal _ -> error "Cannot generate code for external types"
   s <- get
   put $ DMS.insertWith (\(a, b) (ea, _) -> (ea ++ a, b)) mdata ([dc], hType) s
