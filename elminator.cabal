@@ -11,8 +11,10 @@ license: BSD3
 license-file: LICENSE
 build-type: Simple
 extra-source-files:
-  ChangeLog.md
   README.md
+
+extra-doc-files:
+  ChangeLog.md
 
 tested-with:
   ghc ==9.6.7 || ==9.8.4 || ==9.10.3 || ==9.12.2
@@ -55,9 +57,6 @@ library
 test-suite elminator-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
-  other-modules:
-    Paths_elminator
-
   hs-source-dirs:
     test
 
