@@ -171,11 +171,17 @@ instance (ToHConstructor_ b, KnownSymbol a1, KnownSymbol a2, KnownSymbol a3) =>
 isTuple :: Text -> Maybe Int
 isTuple t =
   case T.uncons t of
-    Just (c, _) ->
-      if c == '('
-        then Just $ DL.length $ T.split (== ',') t
-        else Nothing
-    _ -> Nothing
+    Just ('(', _) -> Just $ DL.length $ T.split (== ',') t
+    _ ->
+      -- ghc-prim >=0.11.0 uses Unit, Solo, Tuple2, Tuple3, ... instead of (), (,), (,,), ...
+      if t == "Unit" || t == "Solo"
+        then Just 1
+      else case T.stripPrefix "Tuple" t of
+        Just rest ->
+          case reads (T.unpack rest) :: [(Int, String)] of
+            [(n, "")] -> Just n
+            _ -> Nothing
+        _ -> Nothing
 
 instance ToHConstructor_ V1 where
   toHConstructor_ _ = pure []
