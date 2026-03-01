@@ -23,6 +23,6 @@ jobs:
       - name: Install Elm
         run: npm install -g elm
       - name: Build e2e test suite
-        run: cabal build elminator-e2e
+        run: cabal build -fe2e elminator-e2e
       - name: Run e2e tests
-        run: cabal test elminator-e2e --test-show-details=direct
+        run: cabal test -fe2e elminator-e2e --test-show-details=direct
