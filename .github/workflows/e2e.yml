@@ -1,0 +1,28 @@
+name: E2E Tests
+on:
+  - push
+  - pull_request
+
+jobs:
+  e2e:
+    name: E2E - GHC ${{ matrix.ghc }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with tested-with in cabal file
+        ghc: ['9.6.7', '9.8.4', '9.10.3', '9.12.2']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: haskell-actions/setup@v2
+        with:
+          ghc-version: ${{ matrix.ghc }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+      - name: Install Elm
+        run: npm install -g elm
+      - name: Build e2e test suite
+        run: cabal build elminator-e2e
+      - name: Run e2e tests
+        run: cabal test elminator-e2e --test-show-details=direct
