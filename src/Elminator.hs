@@ -20,6 +20,7 @@ import Data.Aeson (Options)
 import Data.List as DL
 import qualified Data.Map.Strict as DMS
 import Data.Proxy
+import qualified Data.Set as Set
 import Data.Text as T
 import Data.Text.IO as T
 import qualified Elminator.ELM.Generator as Elm
@@ -32,14 +33,14 @@ import Language.Haskell.TH
 -- generated type will be polymorphic.
 include :: (ToHType a) => Proxy a -> GenOption -> Builder
 include p dc = do
-  let hType = SState.evalState (toHType p) DMS.empty
+  let hType = SState.evalState (toHType p) Set.empty
   mdata <-
     case hType of
       HUDef (UDefData m _ _) -> pure m
       HPrimitive _ -> error "Direct encoding of primitive type is not supported"
       HMaybe _ -> error "Direct encoding of maybe type is not supported"
       HList _ -> error "Direct encoding of list type is not supported"
-      HRecursive _ -> error "Unexpected meta data"
+      HRecursive _ _ -> error "Unexpected meta data"
       HExternal _ -> error "Cannot generate code for external types"
   s <- get
   put $ DMS.insertWith (\(a, b) (ea, _) -> (ea ++ a, b)) mdata ([dc], hType) s
@@ -55,7 +56,7 @@ generateFor ::
   -> Builder -- ^ Configuration made by calls to `include` function.
   -> Q Exp
 generateFor ev opt moduleName mfp sc =
-  let (_, gc) = runState sc DMS.empty
+  let gc = execState sc DMS.empty
       r = do
         srcs <- mapM generateOne $ DMS.elems gc
         front <- Elm.elmFront moduleName
@@ -81,7 +82,7 @@ generateFor ev opt moduleName mfp sc =
     generateOne :: ([GenOption], HType) -> GenM Text
     generateOne (gs, ht) = do
       srcs <- mapM (generateOne_ ht) gs
-      pure $ T.intercalate "" srcs
+      pure $ T.concat srcs
       where
         generateOne_ :: HType -> GenOption -> GenM Text
         generateOne_ h d = Elm.generateElm d h opt

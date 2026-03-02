@@ -111,7 +111,7 @@ data TypeDescriptor
   | TMaybe TypeDescriptor
   | TTuple [TypeDescriptor]
   | TPrimitive MData
-  | TRecusrive MData
+  | TRecusrive MData [TypeDescriptor]
   | TExternal (ExInfo TypeDescriptor)
   | TVar Name
   deriving (Show)
@@ -158,7 +158,7 @@ toTypeDescriptor (HUDef udata) =
 toTypeDescriptor (HPrimitive md) = pure $ TPrimitive md
 toTypeDescriptor (HList ht) = TList <$> toTypeDescriptor ht
 toTypeDescriptor (HMaybe ht) = TMaybe <$> toTypeDescriptor ht
-toTypeDescriptor (HRecursive m) = pure $ TRecusrive m
+toTypeDescriptor (HRecursive m targs) = TRecusrive m <$> mapM toTypeDescriptor targs
 toTypeDescriptor (HExternal e) = do
   tds <- mapM toTypeDescriptor $ exTypeArgs e
   pure $ TExternal e {exTypeArgs = tds}
@@ -230,7 +230,7 @@ renderTypeHead td =
   case td of
     TEmpty md _ _ -> _mTypeName md
     TOccupied md _ _ _ -> _mTypeName md
-    TRecusrive md -> _mTypeName md
+    TRecusrive md _ -> _mTypeName md
     x -> error ("Unimplemented" ++ show x)
 
 renderType :: TypeDescriptor -> Bool -> Bool -> GenM Text
@@ -258,7 +258,11 @@ renderType td includePara showPhantom = do
              ta <- mapM (\x -> renderType x False showPhantom) tds
              pure $ T.concat ["(", T.intercalate ", " ta, ")"]
            TPrimitive md -> pure $ _mTypeName md
-           TRecusrive md -> pure $ _mTypeName md
+           TRecusrive md targs -> do
+            ta <- mapM (\t -> renderType t True showPhantom) targs
+            pure $ if null ta
+              then _mTypeName md
+              else T.concat [_mTypeName md, " ", T.intercalate " " ta]
            TExternal ei -> do
              ta <- mapM (\x -> renderType x True showPhantom) $ exTypeArgs ei
              pure $ T.concat [snd $ exType ei, " ", T.intercalate " " ta]
@@ -281,6 +285,10 @@ renderType td includePara showPhantom = do
                TMaybe _ -> wrapInPara tn
                TExternal ei ->
                  if not $ DL.null (exTypeArgs ei)
+                   then wrapInPara tn
+                   else tn
+               TRecusrive _ targs ->
+                 if not (DL.null targs)
                    then wrapInPara tn
                    else tn
                _ -> tn
@@ -379,7 +387,7 @@ collectExtRefs (TOccupied _ _ _ cons_) =
 collectExtRefs (TList td) = collectExtRefs td
 collectExtRefs (TMaybe td) = collectExtRefs td
 collectExtRefs (TPrimitive _) = pure ()
-collectExtRefs (TRecusrive _) = pure ()
+collectExtRefs (TRecusrive _ _) = pure ()
 collectExtRefs _ = pure ()
 
 getConstructorsFields :: Constructors -> [TypeDescriptor]
@@ -397,5 +405,5 @@ getMd td =
     TEmpty md _ _ -> Just md
     TOccupied md _ _ _ -> Just md
     TPrimitive md -> Just md
-    TRecusrive md -> Just md
+    TRecusrive md _ -> Just md
     _ -> Nothing
